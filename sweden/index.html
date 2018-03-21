@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Sweden map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+
+  <style>
+
+    body {
+      display: flex;
+    }
+
+    .infobox {
+      font-size: 50px;
+      display: inline-flex;
+    }
+
+    .background {
+      fill: #fff;
+      pointer-events: all;
+    }
+
+    .active {
+      fill: red;
+    }
+  </style>
+
+</head>
+<body>
+
+  <script>
+
+    var width = 700,
+      height = 750,
+      active = d3.select(null);
+    
+    var canvas = d3.select('body').append('svg')
+      .attr('width', width)
+      .attr('height', height);
+
+    canvas.append('rect')
+      .attr('class', 'background')
+      .attr('width', width)
+      .attr('height', height)
+      .on('click', reset);
+
+    //var group = canvas.selectAll('g');
+
+    var infobox = d3.select('body').append('div')
+      .attr('class', 'infobox');
+
+    var group;
+
+    d3.json('custom.geo.json', (data) => {
+
+      group = canvas.selectAll('g')
+          .data(data.features)
+          .enter()
+          .append('g');
+
+     // var projection = d3.geo.mercator().scale(1350).translate([-200, 2300]);
+      var projection = d3.geo.mercator().scale(1300).translate([-200, height * 3]);
+      var path = d3.geo.path().projection(projection);
+
+      group
+        .append('path')
+          .attr('d', path)
+          .attr('class', 'area')
+          .attr('fill', 'steelblue')
+        .on('mouseover', function(d) {
+          d3.select(this).attr('fill', 'red')
+          infobox.html(d.properties.KNNAMN)
+        })
+        .on('mouseout', function(d) {
+          d3.select(this).attr('fill', 'steelblue')
+        })
+        .on('click', clicked);
+
+      function clicked(d) {
+        if(active.node() === this) return reset();
+        active.classed('active', false);
+        active = d3.select(this).classed('active', true);
+
+          var bounds = path.bounds(d),
+            dx = bounds[1][0] - bounds[0][0],
+            dy = bounds[1][1] - bounds[0][1],
+            x = (bounds[0][0] + bounds[1][0]) / 2,
+            y = (bounds[0][1] + bounds[1][1]) / 2,
+            scale = .5 / Math.max(dx / width, dy / height);
+          translate = [width / 2 - scale * x, height / 2 - scale * y];
+
+          group.transition()
+            .duration(1200)
+            .style('stroke-width', 1.5 / scale + "px")
+            .attr('transform', 'translate(' + translate + ')scale(' + scale + ')');
+        }
+    });
+
+    function reset() {
+        active.classed('active', false);
+        active = d3.select(null);
+
+        group.transition()
+          .duration(1200)
+          .style('stroke-width', "100px")
+          .attr('transform', '');
+      }
+
+
+  </script>
+
+
+  
+</body>
+</html>

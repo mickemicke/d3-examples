@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Page Title</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+
+  <style>
+    .infobox {
+      position: absolute;
+      padding: 5px;
+      border: 1px solid #333;
+      border-radius: 5px;
+      opacity: 0;
+      background-color: #fff;
+    }
+  </style>
+
+</head>
+<body>
+
+  <script>
+
+  // formats numbers (actually strings) to be separated by commas every thousands
+  function outerFormat(string) {
+    var result = [];
+
+    function innerFormat(string, i = 3) {
+      if (i < string.length + 3) {
+        result.push(string.substring(string.length - (i - 3), string.length - i));
+        innerFormat(string, i + 3);
+      };
+    };
+
+    if (result.length === 0) {
+      innerFormat(string);
+    } else if (string.length / result.length > 3) {
+      innerFormat(string);
+    }
+
+    return result.reverse().join(',');
+  };
+
+  var width = 1920;
+  var height = 1080;
+
+  var canvas = d3.select('body').append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .style('background-color', '#000');
+
+  var infobox = d3.select('body').append('div')
+    .attr('class', 'infobox');
+
+  var group = canvas.append('g')
+    .attr('transform', 'translate(20, 20)');
+
+  var projection = d3.geo.equirectangular().scale(300).translate([width/2,height/2]);
+  console.log(projection);
+
+  d3.csv("data.csv", (data) => {
+
+    var findPop = data.map((item) => {
+      for (let val in item) {
+        return item.pop;
+      }
+    });
+
+    var maxPop = Math.round(Math.max(...findPop));
+
+    var rScale = d3.scale.sqrt()
+      .domain([0, maxPop])
+      .range([0, 20]);
+      
+    var circles = group.selectAll('circles')
+      .data(data)
+      .enter()
+        .append('circle')
+        .attr('fill', 'white')
+        .style('opacity', '0.5')
+        .attr('r', (d) => rScale(d.pop))
+        .attr('transform', (d) => `translate(${projection([d.lng, d.lat])})`)
+        .on('mouseover', function(d) {
+          infobox.transition()
+            .style('opacity', 1)
+          infobox.html([d.city, outerFormat(Math.floor(d.pop).toString())].join('<br>'))
+            .style('left', d3.event.pageX + 10 + 'px')
+            .style('top', d3.event.pageY + 10 + 'px')
+        })
+        .on('mouseout', function() {
+          infobox.transition()
+            .style('opacity', 0)
+        });
+  });
+
+  </script>
+  
+</body>
+</html>
