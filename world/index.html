@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -23,96 +24,102 @@
   </style>
 
 </head>
+
 <body>
 
   <script>
 
-  // formats numbers (actually strings) to be separated by commas every thousands
-  function outerFormat(string) {
-    var result = [];
+    // formats numbers (actually strings) to be separated by commas every thousands
+    function outerFormat(string) {
+      var result = [];
 
-    function innerFormat(string, i = 3) {
-      if (i < string.length + 3) {
-        result.push(string.substring(string.length - (i - 3), string.length - i));
-        innerFormat(string, i + 3);
+      function innerFormat(string, i = 3) {
+        if (i < string.length + 3) {
+          result.push(string.substring(string.length - (i - 3), string.length - i));
+          innerFormat(string, i + 3);
+        };
       };
+
+      if (result.length === 0) {
+        innerFormat(string);
+      } else if (string.length / result.length > 3) {
+        innerFormat(string);
+      }
+
+      return result.reverse().join(',');
     };
 
-    if (result.length === 0) {
-      innerFormat(string);
-    } else if (string.length / result.length > 3) {
-      innerFormat(string);
-    }
+    var graphIt = function () {
 
-    return result.reverse().join(',');
-  };
+      var width = window.innerWidth;
+      var height = window.innerHeight;
 
- // 10% margin on each side
-  var margin = {
-    top: window.innerHeight * 0.05,
-    right: window.innerWidth * 0.05,
-    bottom: window.innerHeight * 0.05,
-    left: window.innerWidth * 0.05
-  };
+      // Dynamic scale for different size windows - formula from trial and error. Looks ok on many different sizes
+      var projScale = (height + width) / 10;
 
-  var width = window.innerWidth - margin.right - margin.left;
-  var height = window.innerHeight - margin.top - margin.bottom;
+      var canvas = d3.select('body').append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('background-color', '#000');
 
-  var projScale = Math.round(width / height * 100);
+      var infobox = d3.select('body').append('div')
+        .attr('class', 'infobox');
 
-  var canvas = d3.select('body').append('svg')
-    .attr('width', width + margin.right + margin.left)
-    .attr('height', height + margin.top + margin.bottom )
-    .style('background-color', '#000');
+      var group = canvas.append('g')
+        .attr('height', height)
+        .attr('width', width)
+        .attr('transform', `translate(${width * 0.1}, ${height * 0.1 }) `); // 10% padding
 
-  var infobox = d3.select('body').append('div')
-    .attr('class', 'infobox');
+      var projection = d3.geo.equirectangular().scale(projScale).translate([width / 3, height / 3]);
 
-  var group = canvas.append('g')
-    .attr('height', height)
-    .attr('width', width)
-    .style('background-color', 'green')
-    .attr('transform', `translate(${width / 2, height / 2}) `);
+      var graph = d3.csv("data.csv", (data) => {
 
-  var projection = d3.geo.equirectangular().scale(projScale).translate([width / 3, height / 2]);
-  console.log(projection);
+        var findPop = data.map((item) => {
+          for (let val in item) {
+            return item.pop;
+          }
+        });
 
-  d3.csv("data.csv", (data) => {
+        var maxPop = Math.round(Math.max(...findPop));
 
-    var findPop = data.map((item) => {
-      for (let val in item) {
-        return item.pop;
-      }
+        var rScale = d3.scale.sqrt()
+          .domain([0, maxPop])
+          .range([0, 20]);
+
+        var circles = group.selectAll('circles')
+          .data(data)
+          .enter()
+          .append('circle')
+          .attr('fill', 'white')
+          .style('opacity', '0.5')
+          .attr('r', (d) => rScale(d.pop))
+          .attr('transform', (d) => `translate(${projection([d.lng, d.lat])})`)
+          .on('mouseover', function (d) {
+            infobox.transition()
+              .style('opacity', 1)
+            infobox.html([d.city, outerFormat(Math.floor(d.pop).toString())].join('<br>'))
+              .style('left', d3.event.pageX + 10 + 'px')
+              .style('top', d3.event.pageY + 10 + 'px')
+          })
+          .on('mouseout', function () {
+            infobox.transition()
+              .style('opacity', 0)
+          });
+      });
+    };
+
+    // Render the graph on page load
+    graphIt();
+
+    // Remove the graph and rerender on window resize
+    window.addEventListener('resize', () => {
+      d3.select('svg').remove();
+      d3.select('div').remove();
+      graphIt();
     });
 
-    var maxPop = Math.round(Math.max(...findPop));
-
-    var rScale = d3.scale.sqrt()
-      .domain([0, maxPop])
-      .range([0, 20]);
-      
-    var circles = group.selectAll('circles')
-      .data(data)
-      .enter()
-        .append('circle')
-        .attr('fill', 'white')
-        .style('opacity', '0.5')
-        .attr('r', (d) => rScale(d.pop))
-        .attr('transform', (d) => `translate(${projection([d.lng, d.lat])})`)
-        .on('mouseover', function(d) {
-          infobox.transition()
-            .style('opacity', 1)
-          infobox.html([d.city, outerFormat(Math.floor(d.pop).toString())].join('<br>'))
-            .style('left', d3.event.pageX + 10 + 'px')
-            .style('top', d3.event.pageY + 10 + 'px')
-        })
-        .on('mouseout', function() {
-          infobox.transition()
-            .style('opacity', 0)
-        });
-  });
-
   </script>
-  
+
 </body>
+
 </html>
